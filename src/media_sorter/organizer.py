@@ -96,6 +96,58 @@ def build_series_dest(
     )
 
 
+SUBTITLE_EXTENSIONS = {".srt", ".sub", ".ass", ".ssa", ".vtt", ".idx"}
+SUBS_DIR_NAMES = {"subs", "subtitles", "sub"}
+
+# Files torrents leave behind that should never block folder removal.
+# Deliberately excludes executables and archives: those stay visible.
+JUNK_EXTENSIONS = {
+    ".nfo", ".sfv", ".srr", ".txt", ".md5", ".torrent",
+    ".jpg", ".jpeg", ".png", ".gif",
+    ".url", ".website", ".lnk",
+}
+JUNK_FILENAMES = {".ds_store", "thumbs.db"}
+
+
+def _is_junk(path: Path) -> bool:
+    return path.is_file() and (
+        path.suffix.lower() in JUNK_EXTENSIONS
+        or path.name.lower() in JUNK_FILENAMES
+    )
+
+
+def find_subtitles(video: Path, video_extensions) -> List[Tuple[Path, str]]:
+    """Return (subtitle_path, name_tail) pairs belonging to a video file.
+
+    name_tail is appended to the destination stem so language tags survive:
+    "Movie.en.srt" next to "Movie.mkv" -> tail ".en.srt";
+    "Subs/English.srt" -> tail ".English.srt". A Subs/ folder is only claimed
+    when the video is the only one in its folder, otherwise ownership is
+    ambiguous.
+    """
+    results = []
+    stem_lower = video.stem.lower()
+    for p in sorted(video.parent.iterdir()):
+        if (
+            p.is_file()
+            and p.suffix.lower() in SUBTITLE_EXTENSIONS
+            and p.name.lower().startswith(stem_lower)
+        ):
+            results.append((p, p.name[len(video.stem):]))
+
+    sibling_videos = [
+        p for p in video.parent.iterdir()
+        if p.is_file() and p.suffix.lower() in video_extensions
+    ]
+    if len(sibling_videos) == 1:
+        for d in video.parent.iterdir():
+            if d.is_dir() and d.name.lower() in SUBS_DIR_NAMES:
+                for p in sorted(d.iterdir()):
+                    if p.is_file() and p.suffix.lower() in SUBTITLE_EXTENSIONS:
+                        results.append((p, f".{p.name}"))
+    return results
+
+
 def prune_empty_dirs(root: Path) -> int:
     """Remove now-empty directories under root (never root itself)."""
     removed = 0
@@ -105,3 +157,25 @@ def prune_empty_dirs(root: Path) -> int:
             path.rmdir()
             removed += 1
     return removed
+
+
+def prune_release_dirs(root: Path) -> Tuple[int, int]:
+    """Junk-aware prune: remove directories whose entire remaining content is
+    release junk (.nfo, .txt, screenshots, ...), deleting that junk first.
+
+    A directory containing anything that isn't junk (a video, an archive, an
+    executable) is left untouched. Returns (dirs_removed, junk_files_removed).
+    """
+    removed_dirs = removed_junk = 0
+    dirs = [p for p in root.rglob("*") if p.is_dir()]
+    for path in sorted(dirs, key=lambda p: len(p.parts), reverse=True):
+        entries = list(path.iterdir())
+        if entries and all(_is_junk(e) for e in entries):
+            for e in entries:
+                e.unlink()
+                removed_junk += 1
+            entries = []
+        if not entries:
+            path.rmdir()
+            removed_dirs += 1
+    return removed_dirs, removed_junk

@@ -27,6 +27,13 @@ the end of the run — nothing gets moved on a guess.
 4. Titles are snapped to existing library folders (case, punctuation, and
    spacing insensitive) so "Daredevil.Born.Again" lands in an existing
    "Daredevil - Born Again" instead of creating a near-duplicate folder.
+5. Matching subtitles (`.srt`/`.ass`/... with the same stem, or in the
+   release's `Subs/` folder) move along with the video, renamed to match so
+   Plex/Jellyfin picks them up. Language tags are preserved.
+6. Files that look like they're still downloading (a `.part`/`.!qB`/
+   `.crdownload` sibling, or modified in the last two minutes) are skipped.
+7. Every run's moves are recorded in `<output>/.media-sorter-undo.json`;
+   `--undo` reverses the most recent run.
 
 ## Requirements
 
@@ -41,8 +48,11 @@ uv sync
 # Always preview first
 uv run media-sorter --source ~/Downloads --output ~/Media --model llama3.2 --dry-run
 
-# Real run, removing release folders left empty by the move
+# Real run, removing release folders left empty (or junk-only) by the move
 uv run media-sorter --source ~/Downloads --output ~/Media --model llama3.2 --prune
+
+# Changed your mind? Reverse the last run (preview with --dry-run first)
+uv run media-sorter --output ~/Media --undo
 ```
 
 Useful flags (see `--help` for all):
@@ -53,7 +63,8 @@ Useful flags (see `--help` for all):
 | `--limit N` | Only process the first N files (trial runs) |
 | `--min-confidence {low,medium,high}` | Threshold for moving a file (default: medium) |
 | `--min-size-mb X` | Skip video files smaller than X MB |
-| `--prune` | Remove source folders left empty after moving |
+| `--prune` | Remove source folders left empty or holding only junk (.nfo, .txt, screenshots) |
+| `--undo` | Reverse the most recent run (moves files back where they came from) |
 | `--host` | Ollama server URL (default: http://localhost:11434) |
 | `--json-mode-only` | For Ollama versions without JSON-schema constrained output |
 
