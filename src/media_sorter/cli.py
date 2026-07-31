@@ -341,8 +341,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--prune", action="store_true",
-        help="After moving, remove source folders left holding only release "
-             "junk (.nfo, .txt, screenshots, ...) or nothing at all",
+        help="After moving, also remove source folders left holding only "
+             "release junk (.nfo, .txt, screenshots, ...); folders left "
+             "completely empty are always cleaned up",
     )
     parser.add_argument(
         "--undo", action="store_true",
@@ -522,13 +523,20 @@ def main(argv: Optional[List[str]] = None) -> None:
     if recorded_moves:
         record_run(output_root, recorded_moves)
 
-    if args.prune and not args.dry_run:
-        removed_dirs, removed_junk = prune_release_dirs(source)
-        if removed_dirs or removed_junk:
-            console.print(
-                f"\n[dim]Pruned {removed_dirs} folder(s) and "
-                f"{removed_junk} junk file(s)[/]"
-            )
+    if not args.dry_run:
+        if args.prune:
+            removed_dirs, removed_junk = prune_release_dirs(source)
+            if removed_dirs or removed_junk:
+                console.print(
+                    f"\n[dim]Pruned {removed_dirs} folder(s) and "
+                    f"{removed_junk} junk file(s)[/]"
+                )
+        else:
+            removed_empty = prune_empty_dirs(source)
+            if removed_empty:
+                console.print(
+                    f"\n[dim]Removed {removed_empty} now-empty folder(s)[/]"
+                )
 
     verb = "Would move" if args.dry_run else "Moved"
     summary = (
