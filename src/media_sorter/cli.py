@@ -156,10 +156,36 @@ def title_plausible(model_title: str, guessed_title: Optional[str]) -> bool:
 
 
 def iter_video_files(source: Path):
-    """Yield all video files under source, recursively, sorted for stable runs."""
-    for path in sorted(source.rglob("*")):
-        if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS:
-            yield path
+    """Yield all video files under source, recursively, sorted for stable runs.
+
+    Walks into symlinked directories too (rglob alone won't) -- torrent/media
+    setups commonly use symlinks for categories or hardlinked libraries.
+    Tracks resolved dirs already visited to avoid infinite loops on a symlink
+    cycle.
+    """
+    found: List[Path] = []
+    seen_dirs = set()
+
+    def walk(dir_path: Path) -> None:
+        try:
+            real = dir_path.resolve()
+        except OSError:
+            return
+        if real in seen_dirs:
+            return
+        seen_dirs.add(real)
+        try:
+            entries = list(dir_path.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            if entry.is_dir():
+                walk(entry)
+            elif entry.is_file() and entry.suffix.lower() in VIDEO_EXTENSIONS:
+                found.append(entry)
+
+    walk(source)
+    yield from sorted(found)
 
 
 def reconcile(result: dict, hints: FilenameHints) -> dict:
@@ -204,12 +230,24 @@ def reconcile(result: dict, hints: FilenameHints) -> dict:
         and result.get("title")
         and not title_plausible(result["title"], hints.guessed_title)
     ):
-        logging.warning(
-            "model title %r shares no words with filename title text %r "
-            "-> treating as ambiguous",
-            result["title"], hints.guessed_title,
-        )
-        result["type"] = "ambiguous"
+        if result["type"] == "series" and hints.guessed_title:
+            # Season/episode are already regex-confirmed and the filename text
+            # right before the SxxEyy marker is a reliable show name -- the
+            # model has drifted (often by snapping to an unrelated known
+            # title), so prefer what the filename itself says over giving up.
+            logging.warning(
+                "model title %r shares no words with filename title text %r "
+                "-> using filename title instead",
+                result["title"], hints.guessed_title,
+            )
+            result["title"] = hints.guessed_title
+        else:
+            logging.warning(
+                "model title %r shares no words with filename title text %r "
+                "-> treating as ambiguous",
+                result["title"], hints.guessed_title,
+            )
+            result["type"] = "ambiguous"
 
     return result
 

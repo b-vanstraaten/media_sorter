@@ -50,10 +50,23 @@ class TestReconcile(unittest.TestCase):
         )
         self.assertEqual(result["type"], "ambiguous")
 
-    def test_implausible_title_demoted(self):
+    def test_implausible_series_title_falls_back_to_filename(self):
+        # Season/episode are already regex-confirmed here, so an implausible
+        # model title (e.g. it snapped to an unrelated known title) shouldn't
+        # sink the whole file -- fall back to the filename's own title text.
         hints = FilenameHints(season=3, episodes=[2], guessed_title="The Bear")
         result = reconcile(
             self._series_result(title="Daredevil - Born Again"), hints
+        )
+        self.assertEqual(result["type"], "series")
+        self.assertEqual(result["title"], "The Bear")
+
+    def test_implausible_movie_title_demoted(self):
+        hints = FilenameHints(year="2010", guessed_title="Inception")
+        result = reconcile(
+            {"type": "movie", "title": "The Matrix", "year": None,
+             "season": None, "episode": None, "confidence": "high"},
+            hints,
         )
         self.assertEqual(result["type"], "ambiguous")
 
