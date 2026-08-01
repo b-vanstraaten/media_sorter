@@ -1,11 +1,11 @@
 # homebrew-media-sorter
 
-Homebrew tap for [media-sorter](https://github.com/barnaby/media-sorter).
+Homebrew tap for [media-sorter](https://github.com/b-vanstraaten/media_sorter).
 
 ## Installation
 
 ```bash
-brew tap barnaby/media-sorter
+brew tap b-vanstraaten/media-sorter
 brew install media-sorter
 ```
 
@@ -15,4 +15,4 @@ brew install media-sorter
 media-sorter --source ~/Downloads --output ~/Media --model llama3.2 --dry-run
 ```
 
-See the [main repository](https://github.com/barnaby/media-sorter) for full documentation.
+See the [main repository](https://github.com/b-vanstraaten/media_sorter) for full documentation.

@@ -2,8 +2,8 @@ class MediaSorter < Formula
   include Language::Python::Virtualenv
 
   desc "Sort torrented movies and series using a local Ollama model"
-  homepage "https://github.com/barnaby/media-sorter"
-  url "https://github.com/barnaby/media-sorter/archive/refs/tags/v0.2.0.tar.gz"
+  homepage "https://github.com/b-vanstraaten/media_sorter"
+  url "https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/v0.2.1.tar.gz"
   sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "MIT"
 

@@ -20,17 +20,17 @@
 
 ```bash
 # Clone the new tap repo
-git clone https://github.com/YOUR_USERNAME/homebrew-media-sorter.git
+git clone https://github.com/b-vanstraaten/homebrew-media-sorter.git
 cd homebrew-media-sorter
 
 # Create the Formula directory
 mkdir -p Formula
 
-# Copy the formula file from media-sorter
-cp ../media_sorter.packaging/homebrew-media-sorter-formula.rb Formula/media-sorter.rb
+# Copy the formula file from media_sorter
+cp ../media_sorter/homebrew-media-sorter-formula.rb Formula/media-sorter.rb
 
 # Copy the README
-cp ../media_sorter.packaging/homebrew-tap-README.md README.md
+cp ../media_sorter/homebrew-tap-README.md README.md
 ```
 
 ### 3. Test the Formula Locally
@@ -67,7 +67,7 @@ git push origin main
 ### 5. Users Can Now Install
 
 ```bash
-brew tap YOUR_USERNAME/media-sorter
+brew tap b-vanstraaten/media-sorter
 brew install media-sorter
 ```
 
@@ -95,7 +95,7 @@ updating in step with each other, not just the version:
    anything that depends on it) so installs never need the network.
 3. Create git tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
 4. Get the release tarball's real SHA256:
-   `curl -sL https://github.com/YOUR_USERNAME/media-sorter/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256`
+   `curl -sL https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256`
 5. Update `url` and `sha256` (the formula's top-level ones, not a resource)
    in `Formula/media-sorter.rb`.
 6. Test locally with the tap steps above, then push the updated formula to
