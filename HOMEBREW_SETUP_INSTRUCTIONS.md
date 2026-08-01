@@ -68,6 +68,7 @@ git push origin main
 
 ```bash
 brew tap b-vanstraaten/media-sorter
+brew trust b-vanstraaten/media-sorter   # required once: Homebrew won't load formulae from third-party taps otherwise
 brew install media-sorter
 ```
 

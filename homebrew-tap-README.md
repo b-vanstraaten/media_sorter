@@ -6,6 +6,7 @@ Homebrew tap for [media-sorter](https://github.com/b-vanstraaten/media_sorter).
 
 ```bash
 brew tap b-vanstraaten/media-sorter
+brew trust b-vanstraaten/media-sorter   # required once: Homebrew won't load formulae from third-party taps otherwise
 brew install media-sorter
 ```
 
