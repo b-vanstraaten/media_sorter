@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import re
+import shutil
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -94,6 +98,83 @@ def build_series_dest(
         / f"Season {season:02d}"
         / f"{series} - {tag}{ext}"
     )
+
+
+MOVE_RETRIES = 2  # extra attempts on a transient copy failure
+MOVE_RETRY_DELAY = 2  # seconds, multiplied by attempt number
+
+# Extra headroom required on top of the file's own size before starting a
+# copy, so a nearly-full destination volume doesn't get topped off right to
+# the edge.
+FREE_SPACE_MARGIN = 1.02
+
+
+def _free_bytes(path: Path) -> int:
+    """Free space on the filesystem that would hold path.
+
+    path (or its parent directories) may not exist yet, so walk up to the
+    nearest ancestor that does.
+    """
+    probe = path
+    while not probe.exists():
+        probe = probe.parent
+    return shutil.disk_usage(probe).free
+
+
+def has_room_for(dest: Path, size: int) -> bool:
+    """True if dest's filesystem has enough free space for a file this size."""
+    return _free_bytes(dest) >= size * FREE_SPACE_MARGIN
+
+
+def move_file(src: Path, dest: Path) -> None:
+    """Move src to dest, never leaving a corrupt or half-written file behind.
+
+    Tries an atomic rename first (instant and all-or-nothing whenever src and
+    dest share a filesystem, which is the common case). When they don't,
+    plain copy-then-delete (what shutil.move falls back to) can leave a
+    truncated file at dest and the original untouched if the process dies
+    mid-copy -- and a later run then sees dest already exists and treats the
+    file as done, silently stranding a corrupt copy in the library forever.
+
+    To avoid that, the fallback copies to a temp file beside dest, verifies
+    its size matches the source, and only then atomically renames it into
+    place and removes the source. A transient failure (flaky network/
+    external drive) gets a couple of retries; if a prior attempt already
+    completed the copy, later attempts skip straight to removing the source
+    instead of copying again.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        os.rename(src, dest)
+        return
+    except OSError:
+        pass  # different filesystem (or something else) -- fall back below
+
+    tmp = dest.with_name(dest.name + ".msorter-tmp")
+    last_error: Optional[OSError] = None
+    for attempt in range(MOVE_RETRIES + 1):
+        if attempt:
+            delay = MOVE_RETRY_DELAY * attempt
+            logging.warning(
+                "Retrying move of %s in %ds (attempt %d/%d): %s",
+                src.name, delay, attempt + 1, MOVE_RETRIES + 1, last_error,
+            )
+            time.sleep(delay)
+        try:
+            already_copied = dest.exists() and dest.stat().st_size == src.stat().st_size
+            if not already_copied:
+                shutil.copy2(src, tmp)
+                if tmp.stat().st_size != src.stat().st_size:
+                    raise OSError(f"copied size mismatch for {src.name}")
+                os.replace(tmp, dest)
+            os.remove(src)
+            return
+        except OSError as e:
+            last_error = e
+            tmp.unlink(missing_ok=True)
+
+    raise last_error
 
 
 SUBTITLE_EXTENSIONS = {".srt", ".sub", ".ass", ".ssa", ".vtt", ".idx"}

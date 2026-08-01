@@ -5,17 +5,27 @@ from __future__ import annotations
 import argparse
 import logging
 import re
-import shutil
 import sys
 import time
+from collections import deque
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from rich import box
-from rich.console import Console
+from rich.console import Console, Group
+from rich.live import Live
 from rich.logging import RichHandler
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
+from rich.text import Text
 
 from .filename_parser import FilenameHints, parse_filename
 from .ollama_client import (
@@ -31,6 +41,8 @@ from .organizer import (
     build_movie_dest,
     build_series_dest,
     find_subtitles,
+    has_room_for,
+    move_file,
     movie_label,
     prune_empty_dirs,
     prune_release_dirs,
@@ -113,10 +125,14 @@ def undo_last_run(output_root: Path, dry_run: bool) -> None:
             console.print(f"  [bold red]✗[/] original location occupied: {tilde(original)}")
             failed += 1
             continue
-        console.print(f"  [green]↩[/] {current.name}  [dim]→ {tilde(original)}[/]")
         if not dry_run:
-            original.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(current, original)
+            try:
+                move_file(current, original)
+            except OSError as e:
+                console.print(f"  [bold red]✗[/] restore failed for {current.name}: {e}")
+                failed += 1
+                continue
+        console.print(f"  [green]↩[/] {current.name}  [dim]→ {tilde(original)}[/]")
         restored += 1
 
     if not dry_run:
@@ -297,6 +313,76 @@ def decide_destination(
     return None, f"classified as {kind} but required fields are missing"
 
 
+ACTIVITY_LINES = 14  # rows of recent per-file history kept on screen
+
+
+class RunView:
+    """Live progress bar + rolling activity panel, redrawn in place.
+
+    Replaces a scrolling per-file transcript: only a fixed-height window of
+    recent activity is ever shown, overwritten each update, with the overall
+    progress bar pinned above it. The final frame is left on screen when the
+    run ends, and the closing summary panels print normally underneath it.
+    """
+
+    def __init__(self, console: Console, total: int):
+        self.progress = Progress(
+            SpinnerColumn(style="cyan"),
+            BarColumn(bar_width=None),
+            MofNCompleteColumn(),
+            TextColumn("[dim]•[/]"),
+            TimeElapsedColumn(),
+            console=console,
+            expand=True,
+        )
+        self.task_id = self.progress.add_task("run", total=total)
+        self.current = Text("", style="italic dim")
+        self.moved = 0
+        self.skipped = 0
+        self.lines: deque = deque(maxlen=ACTIVITY_LINES)
+        self._live = Live(console=console, refresh_per_second=12)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        body = (
+            Text("\n").join(Text.from_markup(line) for line in self.lines)
+            if self.lines
+            else Text("…", style="dim")
+        )
+        group = Group(
+            self.progress,
+            self.current,
+            Text.from_markup(
+                f"[bold green]✓ {self.moved}[/] moved   "
+                f"[bold yellow]○ {self.skipped}[/] left in place"
+            ),
+            Panel(body, title="Activity", border_style="blue", padding=(0, 1)),
+        )
+        self._live.update(group)
+
+    def __enter__(self) -> "RunView":
+        self._live.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self._live.stop()
+
+    def set_current(self, rel: Path) -> None:
+        self.current = Text(f"▸ {rel}", style="italic cyan")
+        self._refresh()
+
+    def record(self, lines: List[str], moved: bool) -> None:
+        """Log one file's result lines and advance the progress bar by one."""
+        self.lines.extend(lines)
+        self.lines.append("")
+        if moved:
+            self.moved += 1
+        else:
+            self.skipped += 1
+        self.progress.update(self.task_id, advance=1)
+        self._refresh()
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="media-sorter",
@@ -422,103 +508,119 @@ def main(argv: Optional[List[str]] = None) -> None:
     touched_series = {}
     recorded_moves: List[Tuple[Path, Path]] = []  # for the undo log
 
-    def note_skip(rel: Path, reason: str, style: str = "yellow") -> None:
-        leftovers.append((rel, reason))
-        console.print(f"  [{style}]○ skip[/]   {rel}  [dim]— {reason}[/]")
+    with RunView(console, len(files)) as view:
 
-    for index, path in enumerate(files):
-        if index:
-            console.print()
-        rel = path.relative_to(source)
-        size = path.stat().st_size
-        hints = parse_filename(path)
+        def note_skip(rel: Path, reason: str, style: str = "yellow") -> None:
+            leftovers.append((rel, reason))
+            view.record([f"  [{style}]○ skip[/]   {rel}  [dim]— {reason}[/]"], moved=False)
 
-        if hints.is_sample:
-            note_skip(rel, "sample file")
-            continue
+        for path in files:
+            rel = path.relative_to(source)
+            size = path.stat().st_size
+            hints = parse_filename(path)
+            view.set_current(rel)
 
-        active_reason = active_download_reason(path)
-        if active_reason:
-            note_skip(rel, active_reason)
-            continue
+            if hints.is_sample:
+                note_skip(rel, "sample file")
+                continue
 
-        if args.min_size_mb and size < args.min_size_mb * 1024 * 1024:
-            note_skip(rel, f"below size threshold ({size / (1024 * 1024):.1f} MB)")
-            continue
+            active_reason = active_download_reason(path)
+            if active_reason:
+                note_skip(rel, active_reason)
+                continue
 
-        try:
-            with console.status(f"Classifying [bold]{rel}[/] …", spinner="dots"):
+            if args.min_size_mb and size < args.min_size_mb * 1024 * 1024:
+                note_skip(rel, f"below size threshold ({size / (1024 * 1024):.1f} MB)")
+                continue
+
+            try:
                 result = classify_file(
                     client, path, hints,
                     series_registry.names(), movie_registry.names(),
                     model=args.model, json_mode_only=args.json_mode_only,
                     host=args.host,
                 )
-        except ClassificationError as e:
-            leftovers.append((rel, f"classification error: {e}"))
-            console.print(f"  [bold red]✗ error[/]  {rel}  [red]{e}[/]")
-            continue
+            except ClassificationError as e:
+                leftovers.append((rel, f"classification error: {e}"))
+                view.record([f"  [bold red]✗ error[/]  {rel}  [red]{e}[/]"], moved=False)
+                continue
 
-        logging.debug("raw result: %s", result)
-        result = reconcile(result, hints)
+            logging.debug("raw result: %s", result)
+            result = reconcile(result, hints)
 
-        dest, reason = decide_destination(
-            path, result, output_root, args.min_confidence,
-            series_registry, movie_registry,
-        )
-
-        if dest is None:
-            note_skip(rel, reason)
-            continue
-
-        if dest.exists():
-            note_skip(
-                rel,
-                f"already in library: {dest.relative_to(output_root)}",
-                style="red",
+            dest, reason = decide_destination(
+                path, result, output_root, args.min_confidence,
+                series_registry, movie_registry,
             )
-            continue
 
-        # Find companions before the video moves: ownership of a Subs/ folder
-        # depends on the video still being in its source folder.
-        subtitles = find_subtitles(path, VIDEO_EXTENSIONS)
-
-        if not args.dry_run:
-            try:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(path, dest)
-            except OSError as e:
-                leftovers.append((rel, f"move failed: {e}"))
-                console.print(f"  [bold red]✗ error[/]  {rel}  [red]move failed: {e}[/]")
+            if dest is None:
+                note_skip(rel, reason)
                 continue
-            recorded_moves.append((path, dest))
 
-        if result["type"] == "movie":
-            kind_markup = "[bold green]✓ movie[/]"
-            moved_movies += 1
-        else:
-            kind_markup = "[bold cyan]✓ series[/]"
-            moved_series += 1
-        console.print(f"  {kind_markup}  {rel}  [bold]({gb(size)})[/]")
-        console.print(f"           [dim]→ {dest.relative_to(output_root)}[/]")
-
-        for sub_path, tail in subtitles:
-            sub_dest = dest.with_name(dest.stem + tail)
-            if sub_dest.exists():
+            if dest.exists():
+                note_skip(
+                    rel,
+                    f"already in library: {dest.relative_to(output_root)}",
+                    style="red",
+                )
                 continue
+
+            # Find companions before the video moves: ownership of a Subs/
+            # folder depends on the video still being in its source folder.
+            subtitles = find_subtitles(path, VIDEO_EXTENSIONS)
+
             if not args.dry_run:
-                try:
-                    shutil.move(sub_path, sub_dest)
-                except OSError as e:
-                    console.print(f"           [red]subtitle move failed: {e}[/]")
+                if not has_room_for(dest, size):
+                    leftovers.append((rel, "not enough free space on destination"))
+                    view.record(
+                        [f"  [bold red]✗ error[/]  {rel}  [red]not enough free space on destination[/]"],
+                        moved=False,
+                    )
                     continue
-                recorded_moves.append((sub_path, sub_dest))
-            console.print(f"           [dim]+ subtitle →[/] [green]{sub_dest.name}[/]")
+                try:
+                    move_file(path, dest)
+                except OSError as e:
+                    leftovers.append((rel, f"move failed: {e}"))
+                    view.record(
+                        [f"  [bold red]✗ error[/]  {rel}  [red]move failed: {e}[/]"],
+                        moved=False,
+                    )
+                    continue
+                recorded_moves.append((path, dest))
 
-        if result["type"] == "series":
-            series_folder = dest.parent.parent
-            entry = touched_series.setdefault(series_folder.name, [series_folder, 0])
-            entry[1] += size
+            if result["type"] == "movie":
+                kind_markup = "[bold green]✓ movie[/]"
+                moved_movies += 1
+            else:
+                kind_markup = "[bold cyan]✓ series[/]"
+                moved_series += 1
+
+            lines = [
+                f"  {kind_markup}  {rel}  [bold]({gb(size)})[/]",
+                f"           [dim]→ {dest.relative_to(output_root)}[/]",
+            ]
+
+            for sub_path, tail in subtitles:
+                sub_dest = dest.with_name(dest.stem + tail)
+                if sub_dest.exists():
+                    continue
+                if not args.dry_run:
+                    try:
+                        move_file(sub_path, sub_dest)
+                    except OSError as e:
+                        lines.append(f"           [red]subtitle move failed: {e}[/]")
+                        continue
+                    recorded_moves.append((sub_path, sub_dest))
+                lines.append(
+                    f"           [dim]+ subtitle →[/] [green]{sub_dest.name}[/]"
+                )
+
+            view.record(lines, moved=True)
+
+            if result["type"] == "series":
+                series_folder = dest.parent.parent
+                entry = touched_series.setdefault(series_folder.name, [series_folder, 0])
+                entry[1] += size
 
     if recorded_moves:
         record_run(output_root, recorded_moves)
