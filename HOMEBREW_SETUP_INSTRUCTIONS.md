@@ -35,18 +35,22 @@ cp ../media_sorter.packaging/homebrew-tap-README.md README.md
 
 ### 3. Test the Formula Locally
 
+Recent Homebrew versions refuse to install a bare formula file directly --
+it has to live in a tap. Easiest way to test before pushing:
+
 ```bash
-# From inside the homebrew-media-sorter directory
-brew install ./Formula/media-sorter.rb --verbose
+brew tap-new local/media-sorter-test --no-git
+cp Formula/media-sorter.rb "$(brew --repository)/Library/Taps/local/homebrew-media-sorter-test/Formula/media-sorter.rb"
+
+brew install --build-from-source --verbose local/media-sorter-test/media-sorter
 
 # Verify it works
 media-sorter --help
+brew test local/media-sorter-test/media-sorter
 
-# Run the test
-brew test media-sorter
-
-# Uninstall after testing
-brew uninstall media-sorter
+# Clean up
+brew uninstall local/media-sorter-test/media-sorter
+brew untap local/media-sorter-test
 ```
 
 ### 4. Push to GitHub
@@ -75,10 +79,24 @@ brew install media-sorter
 
 ## Updating for Future Releases
 
-When you release v0.2.0:
+The formula vendors every runtime dependency as a pinned `resource` block
+(exact version + sha256) instead of letting `pip` resolve them at install
+time, so `brew install` never has to reach PyPI. That means two things need
+updating in step with each other, not just the version:
 
-1. Update `version` in `pyproject.toml`
-2. Create git tag: `git tag v0.2.0 && git push origin v0.2.0`
-3. Get new SHA256: `curl -sL https://github.com/YOUR_USERNAME/media-sorter/archive/refs/tags/v0.2.0.tar.gz | shasum -a 256`
-4. Update `url` and `sha256` in `Formula/media-sorter.rb`
-5. Push the updated formula to the tap repo
+1. Update `version` in `pyproject.toml`, run `uv lock` to refresh `uv.lock`.
+2. If `ollama` or `rich` (or anything in their dependency tree) moved
+   versions since the last release, update the matching `resource` block(s)
+   in the formula: fetch the new pure-Python wheel's URL/sha256 from
+   `https://pypi.org/pypi/<package>/<version>/json`, or -- for
+   `pydantic-core`, the one compiled dependency -- the three platform wheels
+   (`macosx_arm64`, `macosx_x86_64`, `manylinux_x86_64`) for the target
+   Python's `cp3xx` tag. Keep resources in dependency order (each one before
+   anything that depends on it) so installs never need the network.
+3. Create git tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+4. Get the release tarball's real SHA256:
+   `curl -sL https://github.com/YOUR_USERNAME/media-sorter/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256`
+5. Update `url` and `sha256` (the formula's top-level ones, not a resource)
+   in `Formula/media-sorter.rb`.
+6. Test locally with the tap steps above, then push the updated formula to
+   the tap repo.
