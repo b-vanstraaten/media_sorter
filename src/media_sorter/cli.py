@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 import re
+import subprocess
 import sys
-import time
 from collections import deque
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -82,9 +82,26 @@ def dir_size(path: Path) -> int:
 
 
 # Marker files torrent clients keep next to (or instead of) unfinished
-# downloads, and how recently a file must have been written to be suspect.
+# downloads -- cheap to check, so tried before shelling out to lsof.
 PARTIAL_SIBLING_SUFFIXES = (".part", ".!qB", ".crdownload")
-RECENTLY_MODIFIED_SECONDS = 120
+
+
+def _file_is_open(path: Path) -> bool:
+    """True if any process currently has path open.
+
+    A stat()-based "modified recently" heuristic has two failure modes: it
+    lets a stalled or paused download older than a couple minutes through as
+    "safe", and it needlessly skips a small file that finished downloading
+    moments ago. Asking the OS who actually has the file open avoids both.
+    """
+    try:
+        result = subprocess.run(
+            ["lsof", "--", str(path)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        return False  # no lsof on this system -- can't tell, don't block on it
+    return result.returncode == 0
 
 
 def active_download_reason(path: Path) -> Optional[str]:
@@ -92,9 +109,8 @@ def active_download_reason(path: Path) -> Optional[str]:
     for suffix in PARTIAL_SIBLING_SUFFIXES:
         if path.with_name(path.name + suffix).exists():
             return f"still downloading ({suffix} file present)"
-    age = time.time() - path.stat().st_mtime
-    if age < RECENTLY_MODIFIED_SECONDS:
-        return f"modified {int(age)}s ago (may still be downloading)"
+    if _file_is_open(path):
+        return "file is currently open by another process (still downloading?)"
     return None
 
 
