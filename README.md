@@ -91,8 +91,9 @@ before it does anything else — rather than failing partway through a run.
    the library. A destination volume without enough free space is reported
    and skipped rather than attempted.
 9. After a real (non-dry-run) move, source folders left completely empty
-   are always cleaned up; `--prune` additionally removes folders left
-   holding only release junk (`.nfo`, `.txt`, screenshots, ...).
+   are always cleaned up, and by default so are folders left holding only
+   release junk (`.nfo`, `.txt`, screenshots, ...) -- pass `--no-prune` to
+   leave those in place.
 10. Every run's moves are recorded in `<output>/.marquee-undo.json`;
     `--undo` reverses the most recent run.
 
@@ -102,11 +103,11 @@ before it does anything else — rather than failing partway through a run.
 # Always preview first
 marquee --source ~/Downloads --output ~/Media --dry-run
 
-# Real run
+# Real run (also removes source folders left holding only junk, by default)
 marquee --source ~/Downloads --output ~/Media
 
-# Real run, also removing release folders left holding only junk
-marquee --source ~/Downloads --output ~/Media --prune
+# Real run, leaving junk-only source folders in place instead
+marquee --source ~/Downloads --output ~/Media --no-prune
 
 # Changed your mind? Reverse the last run (preview with --dry-run first)
 marquee --output ~/Media --undo --dry-run
@@ -135,7 +136,7 @@ All flags (see `--help` for the authoritative list):
 | `--limit N` | Only process the first N files (trial runs) |
 | `--min-confidence {low,medium,high}` | Threshold for moving a file (default: `medium`) |
 | `--min-size-mb X` | Skip video files smaller than X MB |
-| `--prune` | Also remove source folders left holding only junk (`.nfo`, `.txt`, screenshots); empty folders are always cleaned up |
+| `--prune` / `--no-prune` | Remove source folders left holding only junk (`.nfo`, `.txt`, screenshots) -- on by default, `--no-prune` disables it; empty folders are always cleaned up regardless |
 | `--undo` | Reverse the most recent run (moves files back where they came from) |
 | `--timeout` | Per-file timeout in seconds for the Ollama request (default: `120`) |
 | `--json-mode-only` | For Ollama versions without JSON-schema constrained output |

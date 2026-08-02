@@ -509,10 +509,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Per-file timeout in seconds for the Ollama request (default: 120)",
     )
     parser.add_argument(
-        "--prune", action="store_true",
+        "--prune", action=argparse.BooleanOptionalAction, default=True,
         help="After moving, also remove source folders left holding only "
              "release junk (.nfo, .txt, screenshots, ...); folders left "
-             "completely empty are always cleaned up",
+             "completely empty are always cleaned up. On by default -- "
+             "pass --no-prune to leave junk-only folders in place",
     )
     parser.add_argument(
         "--undo", action="store_true",
