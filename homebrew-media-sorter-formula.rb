@@ -4,7 +4,7 @@ class MediaSorter < Formula
   desc "Sort torrented movies and series using a local Ollama model"
   homepage "https://github.com/b-vanstraaten/media_sorter"
   url "https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/v0.2.2.tar.gz"
-  sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
+  sha256 "2e3c32199c305298fd2d530e2f5955c12bbb3d9a100cbf7f5001df2fedc094b4"
   license "MIT"
 
   depends_on "python@3.12"
