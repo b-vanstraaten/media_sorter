@@ -66,9 +66,17 @@ uv run python -m unittest discover -s tests
 
 echo "==> Updating formula for v$NEW"
 sed -i '' "s#archive/refs/tags/v$CUR\.tar\.gz#archive/refs/tags/v$NEW.tar.gz#" "$FORMULA"
-sed -i '' 's/sha256 ".*"/sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"/' "$FORMULA"
 grep -q "v$NEW.tar.gz" "$FORMULA" || {
   echo "error: failed to update formula url for v$NEW" >&2
+  exit 1
+}
+# Only the sha256 line immediately after the release tarball's own url line
+# is the top-level one -- every resource block has its own sha256 too, and
+# a plain global replace would clobber all of them (this happened once;
+# `n` restricts the substitution to exactly the next line after the match).
+sed -i '' "/archive\\/refs\\/tags\\/v$NEW\\.tar\\.gz/{n;s/sha256 \".*\"/sha256 \"REPLACE_WITH_RELEASE_TARBALL_SHA256\"/;}" "$FORMULA"
+[[ "$(grep -c 'REPLACE_WITH_RELEASE_TARBALL_SHA256' "$FORMULA")" -eq 1 ]] || {
+  echo "error: expected exactly one sha256 placeholder after url substitution" >&2
   exit 1
 }
 ruby -c "$FORMULA" >/dev/null
@@ -101,7 +109,18 @@ rm -f "$TMP_TARBALL"
 echo "==> sha256: $SHA"
 
 sed -i '' "s/sha256 \"REPLACE_WITH_RELEASE_TARBALL_SHA256\"/sha256 \"$SHA\"/" "$FORMULA"
+grep -q "REPLACE_WITH_RELEASE_TARBALL_SHA256" "$FORMULA" && {
+  echo "error: placeholder sha256 still present after substitution" >&2
+  exit 1
+}
 ruby -c "$FORMULA" >/dev/null
+
+DUPES=$(grep -o 'sha256 "[^"]*"' "$FORMULA" | sort | uniq -d)
+if [[ -n "$DUPES" ]]; then
+  echo "error: duplicate sha256 value(s) in $FORMULA -- refusing to commit a corrupt formula:" >&2
+  echo "$DUPES" >&2
+  exit 1
+fi
 
 git add "$FORMULA"
 git commit -m "Fill in the v$NEW release tarball's real sha256"
