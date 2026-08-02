@@ -1,6 +1,6 @@
 [project]
 name = "media-sorter"
-version = "0.2.1"
+version = "0.2.2"
 description = "Sort torrented movies and series into a media library using a local Ollama model"
 readme = "README.md"
 license = {text = "MIT"}
