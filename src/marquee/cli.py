@@ -32,7 +32,9 @@ from .ollama_client import (
     DEFAULT_HOST,
     DEFAULT_MODEL,
     ClassificationError,
+    OllamaUnavailableError,
     classify_file,
+    ensure_ready,
     make_client,
 )
 from .movelog import last_run, pop_last_run, record_run
@@ -401,7 +403,7 @@ class RunView:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="media-sorter",
+        prog="marquee",
         description="Sort movie/series video files using a local Ollama model.",
     )
     parser.add_argument(
@@ -495,6 +497,13 @@ def main(argv: Optional[List[str]] = None) -> None:
         )
         sys.exit(1)
 
+    client = make_client(host=args.host, timeout=args.timeout)
+    try:
+        ensure_ready(client, args.model, args.host)
+    except OllamaUnavailableError as e:
+        console.print(Panel.fit(str(e), title="ollama not ready", border_style="red"))
+        sys.exit(1)
+
     files = list(iter_video_files(source))
     if args.limit is not None:
         files = files[: args.limit]
@@ -502,7 +511,6 @@ def main(argv: Optional[List[str]] = None) -> None:
         console.print(f"No video files found under [cyan]{source}[/]")
         return
 
-    client = make_client(host=args.host, timeout=args.timeout)
     series_registry, movie_registry = scan_known_titles(output_root)
 
     header = (
@@ -516,7 +524,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         )
     if args.dry_run:
         header += "\n[yellow italic]DRY RUN — nothing will be moved[/]"
-    console.print(Panel.fit(header, title="media-sorter", border_style="blue"))
+    console.print(Panel.fit(header, title="marquee", border_style="blue"))
 
     moved_movies = moved_series = 0
     leftovers: List[Tuple[Path, str]] = []  # (path, reason) for the final report

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from media_sorter.organizer import (
+from marquee.organizer import (
     TitleRegistry,
     build_movie_dest,
     build_series_dest,
@@ -104,7 +104,7 @@ class TestMoveFile(unittest.TestCase):
 
     def test_cross_device_falls_back_to_verified_copy(self):
         # Force the rename fast path to fail, as it would across filesystems.
-        with mock.patch("media_sorter.organizer.os.rename", side_effect=OSError):
+        with mock.patch("marquee.organizer.os.rename", side_effect=OSError):
             move_file(self.src, self.dest)
         self.assertFalse(self.src.exists())
         self.assertEqual(self.dest.read_bytes(), b"video-bytes")
@@ -114,10 +114,10 @@ class TestMoveFile(unittest.TestCase):
         def truncated_copy(src, dst, *a, **k):
             Path(dst).write_bytes(b"short")
 
-        with mock.patch("media_sorter.organizer.os.rename", side_effect=OSError), \
-             mock.patch("media_sorter.organizer.shutil.copy2", side_effect=truncated_copy), \
-             mock.patch("media_sorter.organizer.MOVE_RETRIES", 0), \
-             mock.patch("media_sorter.organizer.time.sleep"):
+        with mock.patch("marquee.organizer.os.rename", side_effect=OSError), \
+             mock.patch("marquee.organizer.shutil.copy2", side_effect=truncated_copy), \
+             mock.patch("marquee.organizer.MOVE_RETRIES", 0), \
+             mock.patch("marquee.organizer.time.sleep"):
             with self.assertRaises(OSError):
                 move_file(self.src, self.dest)
         # Source untouched, no corrupt file left at dest, no leftover temp file.
@@ -131,8 +131,8 @@ class TestMoveFile(unittest.TestCase):
         self.dest.parent.mkdir(parents=True)
         self.dest.write_bytes(b"video-bytes")
 
-        with mock.patch("media_sorter.organizer.os.rename", side_effect=OSError), \
-             mock.patch("media_sorter.organizer.shutil.copy2") as copy2:
+        with mock.patch("marquee.organizer.os.rename", side_effect=OSError), \
+             mock.patch("marquee.organizer.shutil.copy2") as copy2:
             move_file(self.src, self.dest)
         copy2.assert_not_called()
         self.assertFalse(self.src.exists())
@@ -142,14 +142,14 @@ class TestMoveFile(unittest.TestCase):
 class TestHasRoomFor(unittest.TestCase):
     def test_enough_space(self):
         usage = shutil.disk_usage(tempfile.gettempdir())
-        with mock.patch("media_sorter.organizer.shutil.disk_usage", return_value=usage):
+        with mock.patch("marquee.organizer.shutil.disk_usage", return_value=usage):
             self.assertTrue(has_room_for(Path(tempfile.gettempdir()) / "x.mkv", 10))
 
     def test_not_enough_space(self):
         fake_usage = type(shutil.disk_usage(tempfile.gettempdir()))(
             total=1000, used=999, free=1
         )
-        with mock.patch("media_sorter.organizer.shutil.disk_usage", return_value=fake_usage):
+        with mock.patch("marquee.organizer.shutil.disk_usage", return_value=fake_usage):
             self.assertFalse(has_room_for(Path(tempfile.gettempdir()) / "x.mkv", 1_000_000))
 
 

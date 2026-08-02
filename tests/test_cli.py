@@ -3,8 +3,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from media_sorter.cli import active_download_reason, reconcile, title_plausible
-from media_sorter.filename_parser import FilenameHints
+from marquee.cli import active_download_reason, reconcile, title_plausible
+from marquee.filename_parser import FilenameHints
 
 
 class TestTitlePlausible(unittest.TestCase):
@@ -94,25 +94,25 @@ class TestActiveDownloadReason(unittest.TestCase):
 
     def test_partial_sibling_marker_flags_without_shelling_out(self):
         self.path.with_name(self.path.name + ".part").write_text("")
-        with mock.patch("media_sorter.cli.subprocess.run") as run:
+        with mock.patch("marquee.cli.subprocess.run") as run:
             reason = active_download_reason(self.path)
         run.assert_not_called()
         self.assertIn("still downloading", reason)
 
     def test_open_file_is_flagged(self):
-        with mock.patch("media_sorter.cli.subprocess.run") as run:
+        with mock.patch("marquee.cli.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             reason = active_download_reason(self.path)
         self.assertIn("currently open", reason)
 
     def test_closed_file_is_not_flagged(self):
-        with mock.patch("media_sorter.cli.subprocess.run") as run:
+        with mock.patch("marquee.cli.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=1)
             reason = active_download_reason(self.path)
         self.assertIsNone(reason)
 
     def test_missing_lsof_does_not_block(self):
-        with mock.patch("media_sorter.cli.subprocess.run", side_effect=FileNotFoundError):
+        with mock.patch("marquee.cli.subprocess.run", side_effect=FileNotFoundError):
             reason = active_download_reason(self.path)
         self.assertIsNone(reason)
 

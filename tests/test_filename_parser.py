@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from media_sorter.filename_parser import (
+from marquee.filename_parser import (
     clean_title,
     extract_year,
     parse_filename,

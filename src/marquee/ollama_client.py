@@ -92,6 +92,15 @@ class ClassificationError(Exception):
     pass
 
 
+class OllamaUnavailableError(Exception):
+    """Ollama isn't reachable, or the requested model isn't pulled.
+
+    Raised by ensure_ready() so the caller can fail fast with an actionable
+    message before scanning files, rather than letting the first
+    classify_file() call surface a confusing error partway through a run.
+    """
+
+
 def _format_known_list(names: Iterable[str]) -> str:
     names = sorted(names)[:MAX_KNOWN_TITLES_IN_PROMPT]
     return json.dumps(names) if names else "(none yet)"
@@ -175,6 +184,37 @@ def _validate_result(result) -> bool:
 
 def make_client(host: str = DEFAULT_HOST, timeout: int = 120) -> ollama.Client:
     return ollama.Client(host=host, timeout=timeout)
+
+
+def _installed_model_names(client: ollama.Client) -> list:
+    return [m.model for m in client.list().models]
+
+
+def ensure_ready(client: ollama.Client, model: str, host: str) -> None:
+    """Raise OllamaUnavailableError if Ollama can't be used as configured."""
+    try:
+        installed = _installed_model_names(client)
+    except ConnectionError as e:
+        raise OllamaUnavailableError(
+            f"Could not reach Ollama at {host}.\n"
+            f"Start it with `ollama serve` (or open the Ollama app), then "
+            f"try again.\n({e})"
+        ) from e
+    except Exception as e:
+        raise OllamaUnavailableError(
+            f"Could not reach Ollama at {host} ({type(e).__name__}: {e})."
+        ) from e
+
+    # The server resolves an untagged name like "llama3.2" to "llama3.2:latest",
+    # so compare against installed names both with and without their tag.
+    untagged = {name.split(":")[0] for name in installed}
+    if model not in installed and model not in untagged:
+        available = ", ".join(sorted(untagged)) or "(none)"
+        raise OllamaUnavailableError(
+            f"Model '{model}' isn't pulled in Ollama.\n"
+            f"Installed models: {available}\n"
+            f"Run `ollama pull {model}` to get it, or pass a different --model."
+        )
 
 
 def classify_file(

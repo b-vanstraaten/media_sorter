@@ -1,12 +1,13 @@
-class MediaSorter < Formula
+class Marquee < Formula
   include Language::Python::Virtualenv
 
   desc "Sort torrented movies and series using a local Ollama model"
   homepage "https://github.com/b-vanstraaten/media_sorter"
-  url "https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/v0.2.2.tar.gz"
-  sha256 "2e3c32199c305298fd2d530e2f5955c12bbb3d9a100cbf7f5001df2fedc094b4"
+  url "https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/v0.3.0.tar.gz"
+  sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "MIT"
 
+  depends_on "ollama"
   depends_on "python@3.12"
 
   # Every runtime dependency is pinned and vendored here so `brew install`
@@ -124,7 +125,16 @@ class MediaSorter < Formula
     venv.pip_install_and_link buildpath
   end
 
+  def caveats
+    <<~EOS
+      marquee needs a running Ollama server with a model pulled:
+        ollama serve &
+        ollama pull llama3.2
+      (marquee checks for both and tells you exactly what's missing if not.)
+    EOS
+  end
+
   test do
-    assert_match "usage: media-sorter", shell_output("#{bin}/media-sorter --help")
+    assert_match "usage: marquee", shell_output("#{bin}/marquee --help")
   end
 end

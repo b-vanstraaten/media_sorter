@@ -1,4 +1,4 @@
-# media-sorter
+# marquee
 
 Sorts torrented movies and TV episodes from a downloads folder into an
 organized media library, using a local [Ollama](https://ollama.com) model to
@@ -20,13 +20,15 @@ happening in place, rather than scrolling an endless per-file transcript.
 ### Homebrew (recommended)
 
 ```sh
-brew tap b-vanstraaten/media-sorter
-brew trust b-vanstraaten/media-sorter   # required once: Homebrew won't load formulae from third-party taps otherwise
-brew install media-sorter
+brew tap b-vanstraaten/marquee
+brew trust b-vanstraaten/marquee   # required once: Homebrew won't load formulae from third-party taps otherwise
+brew install marquee
 ```
 
-This installs `media-sorter` as a standalone CLI in its own isolated virtual
-environment — no Python setup of your own required.
+This installs `marquee` as a standalone CLI in its own isolated virtual
+environment — no Python setup of your own required. It also pulls in
+[Ollama](https://ollama.com) itself as a dependency, so you don't need to
+install that separately.
 
 ### From source
 
@@ -34,15 +36,22 @@ environment — no Python setup of your own required.
 git clone https://github.com/b-vanstraaten/media_sorter.git
 cd media_sorter
 uv sync
-uv run media-sorter --help
+uv run marquee --help
 ```
 
-Either way, you'll also need [Ollama](https://ollama.com) running locally
-with a model pulled:
+If you installed from source, you'll also need [Ollama](https://ollama.com)
+itself.
+
+Either way, Ollama needs to actually be running with a model pulled:
 
 ```sh
+ollama serve &
 ollama pull llama3.2
 ```
+
+If either of those hasn't happened, `marquee` checks for it upfront and
+tells you exactly what's missing (start the server, or which model to pull)
+before it does anything else — rather than failing partway through a run.
 
 ## How it works
 
@@ -82,28 +91,28 @@ ollama pull llama3.2
 9. After a real (non-dry-run) move, source folders left completely empty
    are always cleaned up; `--prune` additionally removes folders left
    holding only release junk (`.nfo`, `.txt`, screenshots, ...).
-10. Every run's moves are recorded in `<output>/.media-sorter-undo.json`;
+10. Every run's moves are recorded in `<output>/.marquee-undo.json`;
     `--undo` reverses the most recent run.
 
 ## Usage
 
 ```sh
 # Always preview first
-media-sorter --source ~/Downloads --output ~/Media --dry-run
+marquee --source ~/Downloads --output ~/Media --dry-run
 
 # Real run
-media-sorter --source ~/Downloads --output ~/Media
+marquee --source ~/Downloads --output ~/Media
 
 # Real run, also removing release folders left holding only junk
-media-sorter --source ~/Downloads --output ~/Media --prune
+marquee --source ~/Downloads --output ~/Media --prune
 
 # Changed your mind? Reverse the last run (preview with --dry-run first)
-media-sorter --output ~/Media --undo --dry-run
-media-sorter --output ~/Media --undo
+marquee --output ~/Media --undo --dry-run
+marquee --output ~/Media --undo
 ```
 
 `~/Downloads` and `~/Media` are the defaults, so if that matches your setup
-you can just run `media-sorter --dry-run` with no flags at all.
+you can just run `marquee --dry-run` with no flags at all.
 
 (If you installed from source rather than via Homebrew, prefix these with
 `uv run`.)

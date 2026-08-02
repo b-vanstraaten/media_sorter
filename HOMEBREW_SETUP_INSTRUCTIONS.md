@@ -2,7 +2,7 @@
 
 ## Files Created
 
-- `homebrew-media-sorter-formula.rb` — The Homebrew formula (with SHA256 already filled in)
+- `homebrew-marquee-formula.rb` — The Homebrew formula (with SHA256 already filled in)
 - `homebrew-tap-README.md` — README for the tap repository
 
 ## Step-by-Step Instructions
@@ -11,8 +11,8 @@
 
 1. Go to https://github.com/new
 2. Create a new repository:
-   - **Name:** `homebrew-media-sorter`
-   - **Description:** `Homebrew tap for media-sorter`
+   - **Name:** `homebrew-marquee`
+   - **Description:** `Homebrew tap for marquee`
    - **Public:** Yes
    - **Initialize with README:** Yes
 
@@ -20,14 +20,14 @@
 
 ```bash
 # Clone the new tap repo
-git clone https://github.com/b-vanstraaten/homebrew-media-sorter.git
-cd homebrew-media-sorter
+git clone https://github.com/b-vanstraaten/homebrew-marquee.git
+cd homebrew-marquee
 
 # Create the Formula directory
 mkdir -p Formula
 
 # Copy the formula file from media_sorter
-cp ../media_sorter/homebrew-media-sorter-formula.rb Formula/media-sorter.rb
+cp ../media_sorter/homebrew-marquee-formula.rb Formula/marquee.rb
 
 # Copy the README
 cp ../media_sorter/homebrew-tap-README.md README.md
@@ -39,43 +39,43 @@ Recent Homebrew versions refuse to install a bare formula file directly --
 it has to live in a tap. Easiest way to test before pushing:
 
 ```bash
-brew tap-new local/media-sorter-test --no-git
-cp Formula/media-sorter.rb "$(brew --repository)/Library/Taps/local/homebrew-media-sorter-test/Formula/media-sorter.rb"
+brew tap-new local/marquee-test --no-git
+cp Formula/marquee.rb "$(brew --repository)/Library/Taps/local/homebrew-marquee-test/Formula/marquee.rb"
 
-brew install --build-from-source --verbose local/media-sorter-test/media-sorter
+brew install --build-from-source --verbose local/marquee-test/marquee
 
 # Verify it works
-media-sorter --help
-brew test local/media-sorter-test/media-sorter
+marquee --help
+brew test local/marquee-test/marquee
 
 # Clean up
-brew uninstall local/media-sorter-test/media-sorter
-brew untap local/media-sorter-test
+brew uninstall local/marquee-test/marquee
+brew untap local/marquee-test
 ```
 
 ### 4. Push to GitHub
 
 ```bash
-cd homebrew-media-sorter
+cd homebrew-marquee
 
 # Update the README if needed, then commit
 git add Formula/ README.md
-git commit -m "Add media-sorter formula"
+git commit -m "Add marquee formula"
 git push origin main
 ```
 
 ### 5. Users Can Now Install
 
 ```bash
-brew tap b-vanstraaten/media-sorter
-brew trust b-vanstraaten/media-sorter   # required once: Homebrew won't load formulae from third-party taps otherwise
-brew install media-sorter
+brew tap b-vanstraaten/marquee
+brew trust b-vanstraaten/marquee   # required once: Homebrew won't load formulae from third-party taps otherwise
+brew install marquee
 ```
 
 ## Troubleshooting
 
 - **Formula fails to install:** Make sure Python 3.12 is available (`brew install python@3.12`)
-- **"Class already defined" error:** Uninstall any existing media-sorter first
+- **"Class already defined" error:** Uninstall any existing marquee first
 - **Wrong GitHub username:** Update the `homepage` and `url` in the formula
 
 ## Updating for Future Releases
@@ -98,6 +98,6 @@ updating in step with each other, not just the version:
 4. Get the release tarball's real SHA256:
    `curl -sL https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256`
 5. Update `url` and `sha256` (the formula's top-level ones, not a resource)
-   in `Formula/media-sorter.rb`.
+   in `Formula/marquee.rb`.
 6. Test locally with the tap steps above, then push the updated formula to
    the tap repo.

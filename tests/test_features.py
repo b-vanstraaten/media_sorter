@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from media_sorter.movelog import last_run, log_path, pop_last_run, record_run
-from media_sorter.organizer import find_subtitles, prune_release_dirs
+from marquee.movelog import last_run, log_path, pop_last_run, record_run
+from marquee.organizer import find_subtitles, prune_release_dirs
 
 VIDEO_EXTS = {".mkv", ".mp4"}
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-LOG_NAME = ".media-sorter-undo.json"
+LOG_NAME = ".marquee-undo.json"
 
 
 def log_path(output_root: Path) -> Path:
