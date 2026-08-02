@@ -83,6 +83,10 @@ def dir_size(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
 
 
+def count_video_files(path: Path) -> int:
+    return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS)
+
+
 def print_library_summary(output_root: Path) -> None:
     """Print a summary of all media currently in the output library."""
     movies_root = output_root / "Movies"
@@ -105,7 +109,8 @@ def print_library_summary(output_root: Path) -> None:
                         seasons.append(season_folder.name)
                 if seasons:
                     size = dir_size(series_folder)
-                    series.append((series_folder.name, len(seasons), size))
+                    episodes = count_video_files(series_folder)
+                    series.append((series_folder.name, len(seasons), episodes, size))
 
     if not movies and not series:
         console.print(f"[dim]No media found in [cyan]{tilde(output_root)}[/][/]")
@@ -136,9 +141,10 @@ def print_library_summary(output_root: Path) -> None:
         )
         table.add_column("Title", style="bold cyan", overflow="fold")
         table.add_column("Seasons", justify="right")
+        table.add_column("Episodes", justify="right")
         table.add_column("Size", justify="right", style="dim")
-        for title, num_seasons, size in series:
-            table.add_row(title, str(num_seasons), gb(size))
+        for title, num_seasons, num_episodes, size in series:
+            table.add_row(title, str(num_seasons), str(num_episodes), gb(size))
         console.print(table)
 
 
@@ -704,8 +710,9 @@ def main(argv: Optional[List[str]] = None) -> None:
 
             if result["type"] == "series":
                 series_folder = dest.parent.parent
-                entry = touched_series.setdefault(series_folder.name, [series_folder, 0])
+                entry = touched_series.setdefault(series_folder.name, [series_folder, 0, 0])
                 entry[1] += size
+                entry[2] += 1
 
     if recorded_moves:
         record_run(output_root, recorded_moves)
@@ -750,12 +757,15 @@ def main(argv: Optional[List[str]] = None) -> None:
         table.add_column("Series", style="bold cyan", overflow="fold")
         table.add_column("Added", justify="right", style="green")
         table.add_column("Total size", justify="right", style="bold magenta")
+        table.add_column("Total episodes", justify="right")
         for name in sorted(touched_series):
-            folder, added = touched_series[name]
+            folder, added, episodes_added = touched_series[name]
             total = dir_size(folder) if folder.exists() else 0
+            total_episodes = count_video_files(folder) if folder.exists() else 0
             if args.dry_run:
                 total += added  # files weren't actually moved in
-            table.add_row(name, gb(added), gb(total))
+                total_episodes += episodes_added
+            table.add_row(name, gb(added), gb(total), str(total_episodes))
         console.print(table)
 
     if leftovers:
