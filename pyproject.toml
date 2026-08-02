@@ -1,12 +1,12 @@
 [project]
 name = "marquee"
-version = "0.3.0"
+version = "0.3.1"
 description = "Sort torrented movies and series into a media library using a local Ollama model"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Barnaby van Straaten", email = "barnaby.vanstraaten@ionq.co"}]
-homepage = "https://github.com/b-vanstraaten/media_sorter"
-repository = "https://github.com/b-vanstraaten/media_sorter"
+homepage = "https://github.com/b-vanstraaten/marquee"
+repository = "https://github.com/b-vanstraaten/marquee"
 keywords = ["media", "organization", "ollama", "ai", "torrent"]
 classifiers = [
     "Development Status :: 3 - Alpha",

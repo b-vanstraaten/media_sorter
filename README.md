@@ -1,5 +1,7 @@
 # marquee
 
+[![Tests](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml/badge.svg)](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml)
+
 Sorts torrented movies and TV episodes from a downloads folder into an
 organized media library, using a local [Ollama](https://ollama.com) model to
 name things and plain regex to keep it honest.
@@ -33,8 +35,8 @@ install that separately.
 ### From source
 
 ```sh
-git clone https://github.com/b-vanstraaten/media_sorter.git
-cd media_sorter
+git clone https://github.com/b-vanstraaten/marquee.git
+cd marquee
 uv sync
 uv run marquee --help
 ```
@@ -116,6 +118,51 @@ you can just run `marquee --dry-run` with no flags at all.
 
 (If you installed from source rather than via Homebrew, prefix these with
 `uv run`.)
+
+### Example output
+
+```
+╭───────────────────────── marquee ──────────────────────────╮
+│ 5 video file(s) in /private/tmp/marquee_demo/src           │
+│ Library: /private/tmp/marquee_demo/out  ·  Model: llama3.2 │
+│ DRY RUN — nothing will be moved                            │
+╰────────────────────────────────────────────────────────────╯
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5/5 • 0:00:00
+▸ Movies/Inception.2010.1080p.BluRay.x264-GROUP.mkv
+✓ 4 moved   ○ 1 left in place
+╭────────────────────────────────────── Activity ──────────────────────────────────────╮
+│   ✓ series  Clarksons Farm/Season 05/Clarksons Farm - S05E01.mkv  (0.65 GB)           │
+│            → Series/Clarksons Farm/Season 05/Clarksons Farm - S05E01.mkv              │
+│                                                                                        │
+│   ✓ series  Clarksons Farm/Season 05/Clarksons Farm - S05E02.mkv  (0.65 GB)           │
+│            → Series/Clarksons Farm/Season 05/Clarksons Farm - S05E02.mkv              │
+│                                                                                        │
+│   ✓ series  Clarksons Farm/Season 05/Clarksons Farm - S05E03.mkv  (0.65 GB)           │
+│            → Series/Clarksons Farm/Season 05/Clarksons Farm - S05E03.mkv              │
+│                                                                                        │
+│   ○ skip   Clarksons Farm/Season 05/sample-clip.mkv  — sample file                    │
+│                                                                                        │
+│   ✓ movie  Movies/Inception.2010.1080p.BluRay.x264-GROUP.mkv  (1.86 GB)               │
+│            → Movies/Inception (2010)/Inception (2010).mkv                            │
+│                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────── done ───────────────────────────╮
+│ Would move 1 movie(s) and 3 episode(s)  ·  1 left in place │
+│ dry run — nothing was actually moved                       │
+╰────────────────────────────────────────────────────────────╯
+             Series folders
+╭────────────────┬─────────┬────────────╮
+│ Series         │   Added │ Total size │
+├────────────────┼─────────┼────────────┤
+│ Clarksons Farm │ 1.96 GB │    1.96 GB │
+╰────────────────┴─────────┴────────────╯
+                      Left in place
+╭──────────────────────────────────────────┬─────────────╮
+│ File                                     │ Reason      │
+├──────────────────────────────────────────┼─────────────┤
+│ Clarksons Farm/Season 05/sample-clip.mkv │ sample file │
+╰──────────────────────────────────────────┴─────────────╯
+```
 
 All flags (see `--help` for the authoritative list):
 

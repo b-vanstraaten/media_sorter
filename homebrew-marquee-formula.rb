@@ -2,9 +2,9 @@ class Marquee < Formula
   include Language::Python::Virtualenv
 
   desc "Sort torrented movies and series using a local Ollama model"
-  homepage "https://github.com/b-vanstraaten/media_sorter"
-  url "https://github.com/b-vanstraaten/media_sorter/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "3e2913c8a5af0c1190bc97f26dbe47926ad396bad7195c1c9b0d8de42a588fb1"
+  homepage "https://github.com/b-vanstraaten/marquee"
+  url "https://github.com/b-vanstraaten/marquee/archive/refs/tags/v0.3.1.tar.gz"
+  sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "MIT"
 
   depends_on "ollama"

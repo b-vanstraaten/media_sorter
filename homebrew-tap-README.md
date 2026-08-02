@@ -1,6 +1,6 @@
 # homebrew-marquee
 
-Homebrew tap for [marquee](https://github.com/b-vanstraaten/media_sorter).
+Homebrew tap for [marquee](https://github.com/b-vanstraaten/marquee).
 
 ## Installation
 
@@ -16,4 +16,4 @@ brew install marquee
 marquee --source ~/Downloads --output ~/Media --model llama3.2 --dry-run
 ```
 
-See the [main repository](https://github.com/b-vanstraaten/media_sorter) for full documentation.
+See the [main repository](https://github.com/b-vanstraaten/marquee) for full documentation.
