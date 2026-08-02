@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from io import StringIO
 
-from marquee.cli import active_download_reason, reconcile, title_plausible
+from marquee.cli import active_download_reason, reconcile, title_plausible, print_library_summary, console
 from marquee.filename_parser import FilenameHints
 
 
@@ -81,6 +82,60 @@ class TestReconcile(unittest.TestCase):
             hints,
         )
         self.assertEqual(result["year"], "2010")
+
+
+class TestPrintLibrarySummary(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.output_root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_empty_library(self):
+        with mock.patch.object(console, 'print') as mock_print:
+            print_library_summary(self.output_root)
+        # Should print exactly one message about no media found
+        self.assertTrue(mock_print.called)
+
+    def test_movies_only(self):
+        movies_dir = self.output_root / "Movies" / "Inception (2010)"
+        movies_dir.mkdir(parents=True)
+        (movies_dir / "Inception (2010).mkv").write_text("x" * 1000)
+
+        with mock.patch.object(console, 'print') as mock_print:
+            print_library_summary(self.output_root)
+
+        # Should call print for panel and table
+        self.assertGreaterEqual(mock_print.call_count, 2)
+
+    def test_series_only(self):
+        series_dir = self.output_root / "Series" / "The Bear" / "Season 01"
+        series_dir.mkdir(parents=True)
+        (series_dir / "The Bear - S01E01.mkv").write_text("x" * 1000)
+
+        with mock.patch.object(console, 'print') as mock_print:
+            print_library_summary(self.output_root)
+
+        # Should call print for panel and table
+        self.assertGreaterEqual(mock_print.call_count, 2)
+
+    def test_mixed_library(self):
+        # Create a movie
+        movies_dir = self.output_root / "Movies" / "Inception (2010)"
+        movies_dir.mkdir(parents=True)
+        (movies_dir / "Inception (2010).mkv").write_text("x" * 1000)
+
+        # Create a series
+        series_dir = self.output_root / "Series" / "The Bear" / "Season 01"
+        series_dir.mkdir(parents=True)
+        (series_dir / "The Bear - S01E01.mkv").write_text("x" * 1000)
+
+        with mock.patch.object(console, 'print') as mock_print:
+            print_library_summary(self.output_root)
+
+        # Should call print for panel and both tables
+        self.assertGreaterEqual(mock_print.call_count, 3)
 
 
 class TestActiveDownloadReason(unittest.TestCase):

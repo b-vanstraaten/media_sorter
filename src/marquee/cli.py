@@ -83,6 +83,65 @@ def dir_size(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
 
 
+def print_library_summary(output_root: Path) -> None:
+    """Print a summary of all media currently in the output library."""
+    movies_root = output_root / "Movies"
+    series_root = output_root / "Series"
+
+    movies = []
+    if movies_root.is_dir():
+        for folder in sorted(movies_root.iterdir()):
+            if folder.is_dir():
+                size = dir_size(folder)
+                movies.append((folder.name, size))
+
+    series = []
+    if series_root.is_dir():
+        for series_folder in sorted(series_root.iterdir()):
+            if series_folder.is_dir():
+                seasons = []
+                for season_folder in sorted(series_folder.iterdir()):
+                    if season_folder.is_dir():
+                        seasons.append(season_folder.name)
+                if seasons:
+                    size = dir_size(series_folder)
+                    series.append((series_folder.name, len(seasons), size))
+
+    if not movies and not series:
+        console.print(f"[dim]No media found in [cyan]{tilde(output_root)}[/][/]")
+        return
+
+    console.print(Panel.fit(
+        f"Current library: [cyan]{tilde(output_root)}[/]",
+        title="library summary",
+        border_style="cyan"
+    ))
+
+    if movies:
+        table = Table(
+            title="Movies", box=box.ROUNDED,
+            border_style="green", title_style="bold green",
+        )
+        table.add_column("Title", style="bold green", overflow="fold")
+        table.add_column("Size", justify="right", style="dim")
+        for title, size in movies:
+            table.add_row(title, gb(size))
+        console.print(table)
+        console.print()
+
+    if series:
+        table = Table(
+            title="Series", box=box.ROUNDED,
+            border_style="cyan", title_style="bold cyan",
+        )
+        table.add_column("Title", style="bold cyan", overflow="fold")
+        table.add_column("Seasons", justify="right")
+        table.add_column("Size", justify="right", style="dim")
+        for title, num_seasons, size in series:
+            table.add_row(title, str(num_seasons), gb(size))
+        console.print(table)
+
+
 # Marker files torrent clients keep next to (or instead of) unfinished
 # downloads -- cheap to check, so tried before shelling out to lsof.
 PARTIAL_SIBLING_SUFFIXES = (".part", ".!qB", ".crdownload")
@@ -509,6 +568,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         files = files[: args.limit]
     if not files:
         console.print(f"No video files found under [cyan]{source}[/]")
+        console.print()
+        print_library_summary(output_root)
         return
 
     series_registry, movie_registry = scan_known_titles(output_root)
