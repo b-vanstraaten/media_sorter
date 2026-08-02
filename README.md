@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml/badge.svg)](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml)
 
-Sorts torrented movies and TV episodes from a downloads folder into an
+Sorts downloaded movies and TV episodes from a downloads folder into an
 organized media library, using a local [Ollama](https://ollama.com) model to
 name things and plain regex to keep it honest.
 
@@ -58,7 +58,7 @@ before it does anything else — rather than failing partway through a run.
 ## How it works
 
 1. The source folder is scanned recursively for video files, including into
-   symlinked directories (common for torrent-client categories or hardlinked
+   symlinked directories (common for download-client categories or hardlinked
    libraries) — a plain glob wouldn't follow those.
 2. A regex pass extracts what release names encode reliably: `SxxEyy` /
    `1x02` markers (including multi-episode `S01E01-E02`), years, and the
