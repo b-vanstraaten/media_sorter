@@ -2,6 +2,13 @@
 
 [![Tests](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml/badge.svg)](https://github.com/b-vanstraaten/marquee/actions/workflows/tests.yml)
 
+*Why "marquee"? The word descends from Medieval Latin* marca *— a boundary,
+a marked frontier — by way of French* marquise*, the marquis's tent, before
+it settled into English as the illuminated sign out front announcing what's
+playing. The lineage is fitting: this tool draws the boundary between an
+undifferentiated downloads folder and a properly marked library, then hangs
+the sign.*
+
 Sorts downloaded movies and TV episodes from a downloads folder into an
 organized media library, using a local [Ollama](https://ollama.com) model to
 name things and plain regex to keep it honest.
